@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🏴‍☠️ 寻宝大冒险 - 骑士战记</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: radial-gradient(
+          circle at 50% 0%,
+          #1a2a4a 0%,
+          #0a0f1a 60%,
+          #000 100%
+        );
+        min-height: 100vh;
+        color: #e8e0c8;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      .game-container {
+        width: 100%;
+        max-width: 900px;
+        background: rgba(20, 30, 50, 0.9);
+        border: 2px solid #c9a227;
+        border-radius: 20px;
+        box-shadow:
+          0 0 40px rgba(201, 162, 39, 0.35),
+          inset 0 0 60px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .header {
+        padding: 20px 30px 10px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 2em;
+        background: linear-gradient(90deg, #ffd700, #ff8c00, #ffd700);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+      }
+      .subtitle {
+        color: #8a9bb5;
+        font-size: 0.9em;
+        margin-bottom: 20px;
+      }
+
+      .map {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        position: relative;
+        padding: 0 40px;
+        margin-bottom: 10px;
+      }
+      .map::before {
+        content: "";
+        position: absolute;
+        top: 25px;
+        left: 60px;
+        right: 60px;
+        height: 4px;
+        background: #2a3a55;
+        border-radius: 2px;
+        z-index: 0;
+      }
+      .progress-line {
+        position: absolute;
+        top: 25px;
+        left: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, #ffd700, #ff8c00);
+        border-radius: 2px;
+        width: 0;
+        transition: width 0.8s ease;
+        z-index: 1;
+        box-shadow: 0 0 15px #ffb700;
+      }
+
+      .node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 2;
+      }
+      .node .icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #1a2a44;
+        border: 3px solid #2a3a55;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        transition: all 0.5s;
+        filter: grayscale(1);
+      }
+      .node .label {
+        font-size: 13px;
+        color: #6b7d99;
+        margin-top: 8px;
+        font-weight: bold;
+        transition: color 0.4s;
+      }
+
+      .node.active .icon {
+        border-color: #ffd700;
+        background: #3a2a1a;
+        filter: grayscale(0);
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+        animation: pulse 1.5s infinite;
+      }
+      .node.active .label {
+        color: #ffd700;
+      }
+      .node.done .icon {
+        border-color: #4caf50;
+        background: #1a3a2a;
+        filter: grayscale(0);
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.6);
+      }
+      .node.done .label {
+        color: #4caf50;
+      }
+      .node.failed .icon {
+        border-color: #e74c3c;
+        background: #3a1a1a;
+        filter: grayscale(0);
+        box-shadow: 0 0 15px rgba(231, 76, 60, 0.6);
+      }
+      .node.failed .label {
+        color: #e74c3c;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+      }
+
+      .stage {
+        height: 220px;
+        position: relative;
+        background: #000;
+        transition: background 1.5s ease-in-out;
+        border-top: 1px solid #2a3a55;
+        border-bottom: 1px solid #2a3a55;
+        overflow: hidden;
+        display: flex;
+        align-items: flex-end;
+      }
+
+      .bg-library {
+        background: radial-gradient(
+          circle at 50% 50%,
+          #2a1b10 0%,
+          #050300 100%
+        );
+      }
+      .bg-swamp {
+        background: radial-gradient(
+          circle at 50% 50%,
+          #0e2412 0%,
+          #020503 100%
+        );
+      }
+      .bg-pirate {
+        background: radial-gradient(
+          circle at 50% 50%,
+          #2e0f0f 0%,
+          #050101 100%
+        );
+      }
+      .bg-temple {
+        background: radial-gradient(
+          circle at 50% 50%,
+          #0f192a 0%,
+          #010205 100%
+        );
+      }
+      .bg-treasure {
+        background: radial-gradient(
+          circle at 50% 50%,
+          #4a3410 0%,
+          #0a0701 100%
+        );
+      }
+
+      .ground {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+        z-index: 5;
+      }
+
+      .entity {
+        position: absolute;
+        bottom: 20px;
+        font-size: 80px;
+        transition:
+          left 1s ease-in-out,
+          opacity 0.5s,
+          transform 0.3s;
+        z-index: 10;
+      }
+
+      .hero {
+        left: 15%;
+        z-index: 12;
+        filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.8));
+        transform: scaleX(-1);
+      }
+
+      .enemy {
+        left: 75%;
+        z-index: 11;
+        opacity: 0;
+        filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.8));
+      }
+
+      .walking {
+        animation: walk 0.4s infinite alternate;
+      }
+      @keyframes walk {
+        0% {
+          transform: scaleX(-1) translateY(0) rotate(-5deg);
+        }
+        100% {
+          transform: scaleX(-1) translateY(-15px) rotate(5deg);
+        }
+      }
+
+      .attacking {
+        animation: attack 0.3s ease-in-out infinite;
+      }
+      @keyframes attack {
+        0%,
+        100% {
+          transform: scaleX(-1) scale(1) translateX(0);
+        }
+        /* 翻转 + 向前冲 */
+        50% {
+          transform: scaleX(-1) scale(1.3) translateX(60px) rotate(15deg);
+          filter: drop-shadow(0 0 30px #ffd700);
+        }
+      }
+
+      .hero-hurt {
+        animation: heroHurt 0.5s;
+        filter: drop-shadow(0 0 20px red);
+      }
+      @keyframes heroHurt {
+        0%,
+        100% {
+          transform: scaleX(-1) translateX(0);
+        }
+        20% {
+          transform: scaleX(-1) translateX(-30px) rotate(-20deg);
+        }
+        80% {
+          transform: scaleX(-1) translateX(30px) rotate(20deg);
+        }
+      }
+
+      .enemy-hurt {
+        animation: enemyHurt 0.3s;
+      }
+      @keyframes enemyHurt {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(0.8);
+          opacity: 0.5;
+          filter: brightness(2);
+        }
+      }
+
+      .dead {
+        animation: dead 0.6s forwards;
+        transform-origin: bottom center;
+      }
+      @keyframes dead {
+        0% {
+          transform: rotate(0);
+          opacity: 1;
+        }
+        100% {
+          transform: rotate(90deg) translateY(20px);
+          opacity: 0;
+        }
+      }
+
+      .treasure-open {
+        animation: openGlow 1.5s infinite alternate;
+      }
+      @keyframes openGlow {
+        0% {
+          transform: scale(1);
+          filter: drop-shadow(0 0 20px #ffd700);
+        }
+        100% {
+          transform: scale(1.2);
+          filter: drop-shadow(0 0 60px #ffd700) drop-shadow(0 0 100px #ff8c00);
+        }
+      }
+
+      .float-text {
+        position: absolute;
+        font-size: 30px;
+        font-weight: bold;
+        color: #ff4d4d;
+        text-shadow: 2px 2px 0 #000;
+        z-index: 20;
+        pointer-events: none;
+        animation: floatUp 0.8s ease-out forwards;
+      }
+      @keyframes floatUp {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(0.8);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-60px) scale(1.5);
+        }
+      }
+
+      .particle {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        z-index: 30;
+        pointer-events: none;
+        animation: burst 1s ease-out forwards;
+      }
+      @keyframes burst {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--dx), var(--dy)) scale(0);
+          opacity: 0;
+        }
+      }
+
+      .shake {
+        animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      }
+      @keyframes shake {
+        10%,
+        90% {
+          transform: translate3d(-4px, 0, 0);
+        }
+        20%,
+        80% {
+          transform: translate3d(8px, 0, 0);
+        }
+        30%,
+        50%,
+        70% {
+          transform: translate3d(-12px, 0, 0);
+        }
+        40%,
+        60% {
+          transform: translate3d(12px, 0, 0);
+        }
+      }
+      .flash {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 0, 0, 0.4);
+        z-index: 99;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .flash.active {
+        animation: flashAnim 0.4s;
+      }
+      @keyframes flashAnim {
+        0% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .console {
+        height: 200px;
+        display: flex;
+        flex-direction: column;
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .log {
+        flex: 1;
+        padding: 15px 20px;
+        overflow-y: auto;
+        font-size: 14px;
+        line-height: 1.7;
+        font-family: "Consolas", monospace;
+        color: #cbd5e1;
+      }
+      .log::-webkit-scrollbar {
+        width: 6px;
+      }
+      .log::-webkit-scrollbar-thumb {
+        background: #c9a227;
+        border-radius: 3px;
+      }
+
+      .log-line {
+        opacity: 0;
+        transform: translateX(-15px);
+        animation: slideIn 0.3s forwards;
+        margin-bottom: 6px;
+        padding-left: 10px;
+        border-left: 2px solid transparent;
+      }
+      @keyframes slideIn {
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .log-line.info {
+        color: #8ab4f8;
+        border-color: #8ab4f8;
+      }
+      .log-line.success {
+        color: #4caf50;
+        border-color: #4caf50;
+      }
+      .log-line.error {
+        color: #e74c3c;
+        border-color: #e74c3c;
+      }
+      .log-line.treasure {
+        color: #ffd700;
+        border-color: #ffd700;
+        font-weight: bold;
+        text-shadow: 0 0 10px #ffd700;
+      }
+      .log-line.event {
+        color: #ba68c8;
+        border-color: #ba68c8;
+        font-weight: bold;
+      }
+
+      .controls {
+        height: 70px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        border-top: 1px solid #1a2a44;
+      }
+      button {
+        padding: 12px 35px;
+        font-size: 16px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: inherit;
+      }
+      #startBtn {
+        background: linear-gradient(135deg, #ffd700, #ff8c00);
+        color: #1a1a1a;
+        box-shadow: 0 4px 15px rgba(255, 140, 0, 0.4);
+      }
+      #startBtn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 140, 0, 0.7);
+      }
+      #startBtn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      #resetBtn {
+        background: transparent;
+        color: #c9a227;
+        border: 2px solid #c9a227;
+      }
+      #resetBtn:hover {
+        background: rgba(201, 162, 39, 0.15);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container" id="gameContainer">
+      <div class="header">
+        <h1>🏴‍☠️ 寻宝大冒险</h1>
+        <p class="subtitle">骑士的史诗寻宝之旅</p>
+        <div class="map">
+          <div class="progress-line" id="progressLine"></div>
+          <div class="node" data-step="0">
+            <div class="icon">📜</div>
+            <div class="label">图书馆</div>
+          </div>
+          <div class="node" data-step="1">
+            <div class="icon">🔤</div>
+            <div class="label">解码</div>
+          </div>
+          <div class="node" data-step="2">
+            <div class="icon">🏛️</div>
+            <div class="label">神庙</div>
+          </div>
+          <div class="node" data-step="3">
+            <div class="icon">📦</div>
+            <div class="label">宝箱</div>
+          </div>
+          <div class="node" data-step="4">
+            <div class="icon">💎</div>
+            <div class="label">宝藏</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage bg-library" id="stage">
+        <div class="ground"></div>
+        <div class="entity hero" id="hero">🤺</div>
+        <div class="entity enemy" id="enemy">👾</div>
+        <div class="flash" id="flash"></div>
+      </div>
+
+      <div class="console">
+        <div class="log" id="log"></div>
+        <div class="controls">
+          <button id="startBtn">🚀 开始寻宝</button>
+          <button id="resetBtn">🔄 重置</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
